@@ -1,0 +1,1 @@
+python3 -m eel main.py web -i main.ico --name="Camera Preset Automator" --onefile --noconsole --key=asdfasdfasdffdsa
