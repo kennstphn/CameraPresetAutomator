@@ -52,7 +52,7 @@ def get_render_data():
         "camera4": camera4.toJson(),
         "camera5": camera5.toJson(),
         "midi_note": midi_note,
-        "atem": atemw
+        "atem": atem
     }
 
 
