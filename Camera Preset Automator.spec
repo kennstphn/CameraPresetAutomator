@@ -35,7 +35,7 @@ exe = EXE(pyz,
           runtime_tmpdir=None,
           console=False,
           disable_windowed_traceback=False,
-          target_arch=None,
+          target_arch='x86_64',
           codesign_identity=None,
           entitlements_file=None , icon='main.ico')
 app = BUNDLE(exe,

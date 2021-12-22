@@ -35,6 +35,23 @@ def recall_camera_list(preset_number):
     application.camera5.handle_midi_note("manual", preset_number, "ON", preset_number)
 
 
+@eel.expose
+def ask_position():
+    application.camera1.ask_position()
+    application.camera2.ask_position()
+    application.camera3.ask_position()
+    application.camera4.ask_position()
+    application.camera5.ask_position()
+
+@eel.expose
+def store_current_position_as_preset(i):
+    application.camera1.store_preset(i)
+    application.camera2.store_preset(i)
+    application.camera3.store_preset(i)
+    application.camera4.store_preset(i)
+    application.camera5.store_preset(i)
+    return "OK"
+
 def push_state():
     while True:
         eel.push_render_data(application.get_render_data())

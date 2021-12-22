@@ -28,12 +28,18 @@
             <button
                     v-for="col in [1,2,3,4]"
                     :key="(row - 1) * 4 + col"
-                    class="btn btn-primary"
+                    class="btn "
+                    :class="[$eel.arm_preset_storage ? 'btn-danger' : 'btn-primary']"
                     style="width:100px;"
                     :disabled="(row - 1) * 4 + col === $eel.app.midi_note.note"
-                    @click="$eel.recall_camera_list((row - 1) * 4 + col)"
+                    @click="$eel.arm_preset_storage ? $eel.store_current_position((row - 1) * 4 + col) : $eel.recall_camera_list((row - 1) * 4 + col)"
                     v-html="'Preset ' + ((row - 1) * 4 + col)"
             ></button>
+          </div>
+          <hr>
+          <div class="btn-group">
+            <button class="btn" :class="$eel.arm_preset_storage ? 'btn-outline-secondary' : 'btn-primary'" @click="$eel.arm_preset_storage = false">Recall</button>
+            <button class="btn" :class="! $eel.arm_preset_storage ? 'btn-outline-secondary' : 'btn-danger'" @click="$eel.arm_preset_storage = true">Store</button>
           </div>
         </div>
 

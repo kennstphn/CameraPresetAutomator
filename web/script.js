@@ -12,7 +12,8 @@ Vue.prototype.$eel = new Vue({
   data:{
     app:null,
     log_data:null,
-    show_application_data:false
+    show_application_data:false,
+    arm_preset_storage:false
   },
   methods:{
     recall_camera_list: function(i){
@@ -20,6 +21,9 @@ Vue.prototype.$eel = new Vue({
     },
     recall_camera:function(camera_number,i){
       eel.recall_camera(camera_number,i)
+    },
+    store_current_position:function(i){
+      eel.store_current_position_as_preset(i)(x => window.alert(x))
     }
   },
   watch:{
