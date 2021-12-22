@@ -1,6 +1,7 @@
 import threading
 
 import eel
+
 import application
 import time
 import Switcher
@@ -14,16 +15,10 @@ switchListener.start()
 
 @eel.expose
 def recall_camera(camera_number, preset_number):
-    camera_list = {
-        1: application.camera1,
-        2: application.camera2,
-        3: application.camera3,
-        4: application.camera4,
-        5: application.camera5
-    }
-    if camera_number not in camera_list:
+    camera = application.get_camera(camera_number)
+    if camera is None:
         return
-    camera_list[camera_number].handle_midi_note('manual', preset_number, 'ON', preset_number)
+    camera.handle_midi_note('manual', preset_number, 'ON', preset_number)
 
 
 @eel.expose
@@ -36,12 +31,38 @@ def recall_camera_list(preset_number):
 
 
 @eel.expose
-def ask_position():
-    application.camera1.ask_position()
-    application.camera2.ask_position()
-    application.camera3.ask_position()
-    application.camera4.ask_position()
-    application.camera5.ask_position()
+def go_to_position(camera_number, ptz_triple):
+    camera = application.get_camera(camera_number)
+    if camera is None:
+        raise Exception('Camera not found')
+    thread = threading.Thread(target=camera.go_to_position, name="Camera ptz movement " + str(camera.number),
+                              kwargs={"preset_position": ptz_triple})
+    thread.setDaemon(True)
+    thread.start()
+
+
+@eel.expose
+def load_preset_list(ptz_triple_list_list):
+    thread1 = application.camera1.make_load_preset_thread(ptz_triple_list_list[0])
+    thread2 = application.camera2.make_load_preset_thread(ptz_triple_list_list[1])
+    thread3 = application.camera3.make_load_preset_thread(ptz_triple_list_list[2])
+    thread4 = application.camera4.make_load_preset_thread(ptz_triple_list_list[3])
+    thread5 = application.camera5.make_load_preset_thread(ptz_triple_list_list[4])
+
+    thread1.start()
+    thread2.start()
+    thread3.start()
+    thread4.start()
+    thread5.start()
+
+    thread1.join()
+    thread2.join()
+    thread3.join()
+    thread4.join()
+    thread5.join()
+
+    return "OK"
+
 
 @eel.expose
 def store_current_position_as_preset(i):
@@ -51,6 +72,7 @@ def store_current_position_as_preset(i):
     application.camera4.store_preset(i)
     application.camera5.store_preset(i)
     return "OK"
+
 
 def push_state():
     while True:

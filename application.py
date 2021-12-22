@@ -24,6 +24,22 @@ def update_camera_tally(camera_number, tally, tf):
         return None
 
 
+def get_camera(camera_number):
+    if camera_number == 1:
+        camera = camera1
+    elif camera_number == 2:
+        camera = camera2
+    elif camera_number == 3:
+        camera = camera3
+    elif camera_number == 4:
+        camera = camera4
+    elif camera_number == 5:
+        camera = camera5
+    else:
+        camera = None
+    return camera
+
+
 ProPresenter7.subscribe_to_midi_notes(camera1.handle_midi_note)
 ProPresenter7.subscribe_to_midi_notes(camera2.handle_midi_note)
 ProPresenter7.subscribe_to_midi_notes(camera3.handle_midi_note)
@@ -43,6 +59,7 @@ atem = {
     "preview": None,
     "inTransition": False
 }
+
 
 def get_render_data():
     return {

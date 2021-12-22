@@ -15,13 +15,21 @@ class Camera:
         self.user = user
         self.password = password
         self.tn = None
-        self.tn2 = None
         self.attempted_preset = None
+        self.storing_presets = False
         self.preset = None
         self.program = False
         self.preview = False
         self.connected = False
-        self.reconnect()
+        self.is_moving = False
+        self.needs_restart = False
+
+        self.position_listener = threading.Thread(target=self.watch_position,
+                                                  name="watch position for cam " + str(self.number))
+        self.position_listener.setDaemon(True)
+        self.position_listener.start()
+
+        self.init_telnet()
 
     def wait_program_then_recall(self):
         while self.is_live():
@@ -41,7 +49,6 @@ class Camera:
             if args is None:
                 args = []
             then(args=args)
-        self.ask_position()
         return None
 
     def is_live(self):
@@ -63,8 +70,11 @@ class Camera:
             "attempted_preset": self.attempted_preset,
             "connected": self.connected,
             "program": self.is_live(),
+            "is_moving": self.is_moving,
+            "storing_presets": self.storing_presets,
             "preview": self.number == application.atem['preview'],
-            "position": [self.pan, self.tilt, self.zoom]
+            "position": [self.pan, self.tilt, self.zoom],
+            "needs_restart": self.needs_restart
         }
 
     def set_tally(self, preview_or_program, t_or_f):
@@ -91,42 +101,90 @@ class Camera:
         if self.attempted_preset == self.preset:
             return
         try:
+            self.is_moving = True
             msg = "camera preset recall " + str(self.attempted_preset)
             self.tn.write(msg.encode('ascii') + b"\n")
 
             self.tn.read_until(b"OK")
             self.preset = self.attempted_preset
-            self.ask_position()
+            self.is_moving = False
         except OSError:
+            self.is_moving = False
             self.connected = False
             # reconnect to the server here
             self.reconnect(self.recall)
 
     def ask_position(self):
-        self.tn.write(b"camera pan get\n")
-        self.tn.read_until(b"camera pan get")
-        output = self.tn.read_until(b"OK")
-        output = output.decode('UTF-8')
-        m = re.search(r"\u001b\[0m(.*)\u001b", output)
+        self.tn.write(b"camera ptz-position get\n")
+        output = self.tn.read_until(b"OK").decode('UTF-8')
+
+        m = re.search(r"pan: ([-0-9.]+)\s*tilt: ([-0-9.]+)\s*zoom: ([-0-9.]+)\s*OK", output)
+        if m is None:
+            return
         self.pan = float(m.group(1))
-
-        self.tn.write(b"camera tilt get\n")
-        self.tn.read_until(b"camera tilt get")
-        output = self.tn.read_until(b"OK")
-        output = output.decode('UTF-8')
-        m = re.search(r"\u001b\[0m(.*)\u001b", output)
-        if m is not None:
-            self.tilt = float(m.group(1))
-
-        self.tn.write(b"camera zoom get\n")
-        self.tn.read_until(b"camera zoom get")
-        output = self.tn.read_until(b"OK")
-        output = output.decode('UTF-8')
-        m = re.search(r"\u001b\[0m(.*)\u001b", output)
-        self.tilt = float(m.group(1))
-
+        self.tilt = float(m.group(2))
+        self.zoom = float(m.group(3))
 
     def store_preset(self, i):
         msg = "camera preset store " + str(i)
         self.tn.write(msg.encode('ascii') + b"\n")
+        output = self.tn.read_until(b"OK", 10).decode('UTF-8')
+        if re.search(r"ERROR", output):
+            self.needs_restart = True
+
+    def go_to_position(self, preset_position):
+        if isinstance(preset_position, list) and preset_position.__len__() == 3:
+            preset_position = PresetPosition(preset_position)
+
+        if not isinstance(preset_position, PresetPosition):
+            raise Exception('Invalid argument. Expected PresetPosition')
+
+        ptz = preset_position
+        self.is_moving = True
+        command = 'camera ptz-position set pan ' + str(ptz.pan) + ' tilt ' + str(ptz.tilt) + ' zoom ' + str(ptz.zoom)
+        self.tn.write(command.encode("ascii") + b"\n")
         self.tn.read_until(b"OK")
+        time.sleep(.5)
+        self.is_moving = False
+
+    def load_presets(self, ptz_triple_list):
+        self.storing_presets = True
+        time.sleep(1)
+        i = 0
+        for row in ptz_triple_list:
+            i = i + 1
+            if row is None or len(row) == 0:
+                continue
+            pos = PresetPosition(row)
+            self.go_to_position(pos)
+            self.store_preset(i)
+        self.storing_presets = False
+
+    def make_load_preset_thread(self, ptz_triple_list):
+        thread = threading.Thread(target=self.load_presets, name="loading presets for camera " + str(self.number),
+                                  kwargs={
+                                      "ptz_triple_list": ptz_triple_list
+                                  })
+        return thread
+
+    def watch_position(self):
+        while True:
+            if self.connected and \
+                    (self.attempted_preset == self.preset) and \
+                    (not self.is_moving) and \
+                    (not self.storing_presets):
+                self.ask_position()
+                time.sleep(.25)
+            else:
+                time.sleep(.25)
+
+
+class PresetPosition:
+
+    def __init__(self, ptz_triple):
+        self.pan = ptz_triple[0]
+        self.tilt = ptz_triple[1]
+        self.zoom = ptz_triple[2]
+
+        if not self.pan or not self.tilt or not self.zoom:
+            raise Exception("Missing data in ptz_triple: " + str(ptz_triple))

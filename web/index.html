@@ -11,8 +11,9 @@
     <title>Camera Preset Automator</title>
   </head>
   <body>
-    <div id="app" class="p-5">
-      <div v-if="$eel.app">
+    <div id="app" class="p-5" :class="$eel.darkMode ? 'bg-dark text-white' : ''" style="height:100vh;overflow-y:scroll">
+      <div v-if="$eel.loading_presets">Loading Presets. Please be patient... <i class="fa fa-spinner fa-spin" aria-hidden="true"></i></div>
+      <div v-else-if="$eel.app">
         <h3>Cameras</h3>
         <div class="d-flex mb-3 justify-content-between" >
           <camera-icon :camera="$eel.app.camera1"></camera-icon>
@@ -23,24 +24,23 @@
         </div>
 
         <div>
-          <h3>Manual Group Preset Recall</h3>
-          <div v-for="row in [1,2,3,4]" class="mb-3 d-flex justify-content-between" style="max-width: 600px">
-            <button
-                    v-for="col in [1,2,3,4]"
-                    :key="(row - 1) * 4 + col"
-                    class="btn "
-                    :class="[$eel.arm_preset_storage ? 'btn-danger' : 'btn-primary']"
-                    style="width:100px;"
-                    :disabled="(row - 1) * 4 + col === $eel.app.midi_note.note"
-                    @click="$eel.arm_preset_storage ? $eel.store_current_position((row - 1) * 4 + col) : $eel.recall_camera_list((row - 1) * 4 + col)"
-                    v-html="'Preset ' + ((row - 1) * 4 + col)"
-            ></button>
+          <h3>Camera Presets</h3>
+          <div class="d-flex">
+            <div class="flex-fill">
+              <p v-if="$eel.arm_preset_storage">Click a preset below to <strong>store</strong> the current camera positions to that preset.</p>
+              <p v-else-if="$eel.arm_capture">Click a preset below to <strong>capture</strong> the current camera positions in that preset for exporting (creating a save file).</p>
+              <p v-else>Click a preset below to <strong>recall</strong> all cameras to the saved camera preset</p>
+              <group-presets></group-presets>
+              <div class="btn-group">
+                <button class="btn" :class="$eel.arm_preset_storage || $eel.arm_capture ? 'btn-outline-primary' : 'btn-primary'" @click="$eel.arm(null)">Recall</button>
+                <button class="btn" :class="! $eel.arm_preset_storage ? 'btn-outline-danger' : 'btn-danger'" @click="$eel.arm('store')">Store</button>
+                <button class="btn" :class="! $eel.arm_capture ? 'btn-outline-success' : 'btn-success'" @click="$eel.arm('capture')">Capture</button>
+              </div>
+            </div>
+            <capture-data v-if="$eel.arm_capture" :height="400" class="flex-fill"></capture-data>
+            <import-presets class="flex-fill" v-else></import-presets>
           </div>
           <hr>
-          <div class="btn-group">
-            <button class="btn" :class="$eel.arm_preset_storage ? 'btn-outline-secondary' : 'btn-primary'" @click="$eel.arm_preset_storage = false">Recall</button>
-            <button class="btn" :class="! $eel.arm_preset_storage ? 'btn-outline-secondary' : 'btn-danger'" @click="$eel.arm_preset_storage = true">Store</button>
-          </div>
         </div>
 
         <div>
@@ -52,6 +52,8 @@
         <button @click="$eel.show_application_data = ! $eel.show_application_data" class="btn btn-secondary">
           Turn Debug Data <span v-html="$eel.show_application_data ? 'OFF' : 'ON'"></span>
         </button>
+        <button class="btn btn-secondary" @click="$eel.darkMode = ! $eel.darkMode">Toggle Dark Mode</button>
+
         <div v-if="$eel.show_application_data">
           <div class="list-group" >
             <div class="list-group-item" v-for="val,prop in $eel.app" :key="prop">
@@ -77,6 +79,12 @@
     <!-- development version, includes helpful console warnings -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script type="text/javascript" src="../eel.js"></script>
+    <script src="./components.js"></script>
     <script src="./script.js"></script>
+    <!-- https://github.com/eligrey/FileSaver.js/ -->
+    <script src="./filesaver.min.js"></script>
+    <script>
+      new Vue({     el: document.getElementById('app') })
+    </script>
   </body>
 </html>
